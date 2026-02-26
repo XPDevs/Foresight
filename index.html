@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foresight</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;400;700&family=Montserrat:wght@200;400;700&family=Metal+Mania&display=swap');
+
+        :root {
+            --bg-color: #000000;
+            --text-primary: #ffffff;
+            --text-muted: #555555;
+            --accent: #811313; 
+        }
+
+        /* Base body styles from game.html */
+        body {
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #020205; 
+            font-family: 'Courier New', Courier, monospace; 
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Loading Container */
+        #loading-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+            z-index: 1000;
+            opacity: 1;
+            transition: opacity 1.5s ease-in-out;
+        }
+
+        /* Cinematic Overlays (scoped to loading) */
+        #loading-container .grain {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: url('https://upload.wikimedia.org/wikipedia/commons/7/76/1k_Static_Noise_Standard.png');
+            opacity: 0.05;
+            pointer-events: none;
+            z-index: 100;
+            animation: grain-flicker 0.15s infinite steps(2);
+            will-change: transform;
+        }
+
+        @keyframes grain-flicker {
+            0% { transform: translate(0,0); }
+            50% { transform: translate(-0.5%, -0.5%); }
+            100% { transform: translate(0.5%, 0.5%); }
+        }
+
+        #loading-container .vignette {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 10%, rgba(0,0,0,0.98) 100%);
+            pointer-events: none;
+            z-index: 90;
+        }
+
+        .screen {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transform: scale(1.05);
+            will-change: opacity, transform;
+            transition: opacity 2s ease-in-out, transform 6s cubic-bezier(0.1, 0, 0.2, 1);
+            pointer-events: none;
+            visibility: hidden;
+        }
+
+        .screen.active {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+            visibility: visible;
+        }
+
+        .screen.fade-out {
+            opacity: 0 !important;
+            transform: scale(0.97);
+            transition: opacity 1.8s ease-in-out, transform 2s ease-in-out;
+        }
+
+        .horror-text {
+            font-family: 'Metal Mania', cursive;
+            font-size: 8rem; 
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: -0.01em;
+            margin: 0;
+            text-shadow: 0px 0px 20px rgba(255,0,0,0.2);
+        }
+
+        .brand-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: scale(1.5); 
+        }
+
+        .logo-img {
+            max-width: 150px; 
+            width: 10vw;
+            height: auto;
+            margin-bottom: 2rem;
+            filter: drop-shadow(0 0 20px rgba(255,255,255,0.1));
+        }
+
+        .logo-subtext {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            letter-spacing: 0.8rem;
+            font-size: 1.5rem;
+            color: #ffffff;
+            text-transform: uppercase;
+            padding-left: 0.8rem;
+        }
+
+        .warning-box {
+            max-width: 800px;
+            padding: 2rem;
+            transform: scale(1.1);
+        }
+
+        .warning-text-block {
+            font-family: 'Montserrat', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.2rem;
+        }
+
+        .warning-heading {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            display: block; 
+        }
+
+        .warning-message {
+            font-size: 0.9rem;
+            line-height: 2;
+            color: #888;
+            font-weight: 200;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-container">
+        <div class="grain"></div>
+        <div class="vignette"></div>
+
+        <!-- Screen 1: Title -->
+        <div id="screen-title" class="screen">
+            <h1 class="horror-text">Foresight</h1>
+        </div>
+
+        <!-- Screen 2: XPDevs Brand -->
+        <div id="screen-logo" class="screen">
+            <div class="brand-container">
+                <img src="https://xpdevs.github.io/logo/logo.png" alt="XPDevs Logo" class="logo-img" onerror="this.style.display='none';">
+                <div class="logo-subtext">Made by XPDevs</div>
+            </div>
+        </div>
+
+        <!-- Screen 3: Warning -->
+        <div id="screen-warning" class="screen">
+            <div class="warning-box">
+                <div class="warning-text-block">
+                    <span class="warning-heading">WARNING</span>
+                    <p class="warning-message">
+                        This experience contains flashing lights, sequences of intense psychological horror, and imagery that may be disturbing to some individuals. Viewer discretion is strongly advised.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+            // Prevent context menu unless Shift is held
+    document.addEventListener('contextmenu', function(e) {
+        if (!e.shiftKey) {
+            e.preventDefault();
+        }
+    });
+
+    // Prevent text selection globally
+    document.addEventListener('selectstart', function(e) {
+        e.preventDefault();
+    });
+        // --- Loading Sequence Logic ---
+        const screens = [
+            document.getElementById('screen-title'),
+            document.getElementById('screen-logo'),
+            document.getElementById('screen-warning')
+        ];
+        
+        let currentIdx = 0;
+
+        function runSequence() {
+            if (currentIdx >= screens.length) {
+                const loadingContainer = document.getElementById('loading-container');
+                
+                // Fade out the container for a smoother transition to the next page
+                if (loadingContainer) {
+                    loadingContainer.style.opacity = '0';
+                    loadingContainer.addEventListener('transitionend', () => {
+                        window.location.href = 'menu.html';
+                    });
+                } else {
+                    window.location.href = 'menu.html';
+                }
+                return;
+            }
+
+            const currentScreen = screens[currentIdx];
+
+            currentScreen.classList.remove('fade-out');
+            currentScreen.classList.add('active');
+
+            setTimeout(() => {
+                currentScreen.classList.add('fade-out');
+                setTimeout(() => {
+                    currentScreen.classList.remove('active');
+                    currentIdx++;
+                    setTimeout(runSequence, 800);
+                }, 1850); 
+            }, 3000); 
+        }
+
+        window.onload = () => {
+            setTimeout(runSequence, 1000);
+        };
+    </script>
+</body>
+</html>

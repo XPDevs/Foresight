@@ -1,0 +1,1875 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foresight</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;400;700&family=Montserrat:wght@200;400;700&family=Metal+Mania&display=swap');
+
+        :root {
+            --bg-color: #000000;
+            --text-primary: #ffffff;
+            --text-muted: #555555;
+            --accent: #811313; 
+        }
+
+        /* Base body styles from game.html */
+        body {
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #020205; 
+            font-family: 'Courier New', Courier, monospace; 
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* From game.html */
+        canvas { 
+            display: block; 
+            image-rendering: pixelated; 
+        }
+
+        /* The Aiming Pointer */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 200;
+        }
+
+        #ui-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            color: #8899aa;
+            text-shadow: 2px 2px #000;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #health-bar {
+            width: 150px;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            margin-top: 8px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #health-fill {
+            width: 100%;
+            height: 100%;
+            background-color: #ff4444;
+            transition: width 0.2s ease-out;
+        }
+
+        #stamina-bar {
+            width: 150px;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            margin-top: 8px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #stamina-fill {
+            width: 100%;
+            height: 100%;
+            background-color: #fff;
+            transition: width 0.1s linear;
+        }
+
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #damage-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.6) 0%, rgba(255,0,0,0) 40%, rgba(139,0,0,0.8) 90%);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 999;
+            transition: opacity 0.5s ease-out;
+        }
+
+        #compass-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 60px;
+            height: 60px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        #compass-needle {
+            width: 4px;
+            height: 40px;
+            background: linear-gradient(to bottom, #ff3333 50%, #eeeeee 50%);
+        }
+        #interaction-prompt {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Montserrat', sans-serif;
+            color: white;
+            font-size: 1.2rem;
+            text-shadow: 0 0 5px black;
+            pointer-events: none;
+            display: none;
+        }
+        #note-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        #note-content {
+            background: #eee;
+            color: #111;
+            padding: 40px;
+            font-family: 'Courier New', monospace;
+            max-width: 500px;
+            line-height: 1.6;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            transform: rotate(-1deg);
+        }
+        
+        /* Pause Menu */
+        #pause-menu {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            backdrop-filter: blur(5px);
+        }
+        #pause-menu h1 {
+            font-family: 'Metal Mania', cursive;
+            color: #a33;
+            font-size: 5rem;
+            margin-bottom: 2rem;
+            text-shadow: 0 0 20px rgba(170, 50, 50, 0.5);
+        }
+        #pause-menu button {
+            background: transparent;
+            border: 2px solid #555;
+            color: #fff;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            padding: 1rem 3rem;
+            margin: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        #pause-menu button:hover {
+            border-color: #a33;
+            color: #a33;
+            background: rgba(50, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-ui">
+        <div id="crosshair"></div>
+        <div id="overlay"></div>
+        <div id="damage-overlay"></div>
+        <div id="compass-container">
+            <div id="compass-needle"></div>
+        </div>
+        <div id="interaction-prompt">Press F to Interact</div>
+        <div id="note-overlay">
+            <div id="note-content">
+                <h3>October 14th</h3>
+                <p>I can't stay here. They are watching from the trees. I've locked the weapon in the northern cabin for safety. I hid the key where I last got gas... the old station down the road. It's the only place with light left.</p>
+                <p style="margin-top:20px; font-size: 0.8em; color: #555;">(Press F to close)</p>
+            </div>
+        </div>
+        <div id="ammo-display" style="position: absolute; bottom: 100px; right: 20px; font-size: 1.5rem; color: #fff; display: none;">
+            <span id="ammo-count">0</span> / 6
+        </div>
+        <div id="ui-container">
+            <div style="font-size: 0.8rem; letter-spacing: 2px;">HEALTH</div>
+            <div id="health-bar"><div id="health-fill"></div></div>
+            <div style="font-size: 0.8rem; letter-spacing: 2px;">STAMINA</div>
+            <div id="stamina-bar"><div id="stamina-fill"></div></div>
+        </div>
+    </div>
+
+    <div id="pause-menu">
+        <h1>PAUSED</h1>
+        <div class="menu-buttons">
+            <button id="btn-continue">CONTINUE</button>
+            <button id="btn-exit">EXIT</button>
+        </div>
+    </div>
+
+    <script>
+            // Prevent context menu unless Shift is held
+    document.addEventListener('contextmenu', function(e) {
+        if (!e.shiftKey) {
+            e.preventDefault();
+        }
+    });
+
+    // Prevent text selection globally
+    document.addEventListener('selectstart', function(e) {
+        e.preventDefault();
+    });
+        // --- Game Logic (from game.html) ---
+        let camera, scene, renderer, clock;
+        let player;
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let isSprinting = false;
+        let velocity;
+        let pitch = 0, yaw = 0;
+        let flashlight;
+        let bobTimer = 0;
+        let walkingSound, breathingSound;
+        let lastBob = 0;
+        let stamina = 100;
+        let exhausted = false;
+        let health = 100;
+        let sprintAggression = 0;
+
+        let audioListener;
+        let stalkerWalkSound, stalkerBgSound;
+        let lastStalkerBgTime = -100;
+        let audioEnabled = false;
+        
+        let cabins = [];
+        let hasPistol = false;
+        let hasKey = false;
+        let isReading = false;
+        let ammo = 0;
+        let sleepState = 0; // 0:none, 1:in, 2:sleep, 3:out
+        let sleepTimer = 0;
+        let bedTargetPos;
+        let wakeTargetPos;
+        let figureDeathSound;
+        let fireSound;
+        let paperSound;
+        let lastShotTime = 0;
+        let fistMesh;
+        let controllerFPressed = false;
+        let isPunching = false;
+        let punchTimer = 0;
+        let smokeParticles = [];
+        let cabinChimneyPositions = [];
+        let watcher;
+
+        const GRAVITY = 20.0;
+        const WALK_SPEED = 7.0; 
+        const RUN_SPEED = 14.0;
+        const RENDER_DIST = 100; 
+        const MAP_LIMIT = 1000;
+        
+        const tiles = new Map();
+        const tileSize = 60;
+        const treeColliders = [];
+        const cabinColliders = [];
+        let stalkers = [];
+        let aiLearningLevel = 0;
+        let sanity = 100;
+        let hallucinations = [];
+        
+        // --- Clinical Horror Extensions ---
+        let woundCanvas, woundCtx, woundTexture;
+        let realWorldTime = new Date();
+        let infrasoundOsc = null;
+        let lastMouseTime = Date.now();
+        let isPaused = false;
+        let pauseButtonState = false;
+
+        // Texture generation
+        function createNoiseTexture(color1, color2, size = 64) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            for (let x = 0; x < size; x++) {
+                for (let y = 0; y < size; y++) {
+                    ctx.fillStyle = Math.random() > 0.5 ? color1 : color2;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+            const tex = new paral.CanvasTexture(canvas);
+            tex.magFilter = paral.NearestFilter;
+            tex.minFilter = paral.NearestFilter;
+            tex.wrapS = paral.RepeatWrapping;
+            tex.wrapT = paral.RepeatWrapping;
+            return tex;
+        }
+
+        function createFenceTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            
+            // Transparent bg
+            ctx.clearRect(0,0,128,128);
+            
+            // Rusty mesh
+            ctx.strokeStyle = '#4a2e18'; 
+            ctx.lineWidth = 2;
+            
+            // Irregular grid
+            for(let i=0; i<=128; i+=16) {
+                ctx.beginPath(); ctx.moveTo(i + (Math.random()-0.5)*2, 0); ctx.lineTo(i + (Math.random()-0.5)*2, 128); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, i + (Math.random()-0.5)*2); ctx.lineTo(128, i + (Math.random()-0.5)*2); ctx.stroke();
+            }
+            
+            // Rust spots
+            for(let i=0; i<20; i++) {
+                ctx.fillStyle = Math.random() > 0.5 ? '#8b4513' : '#5d2906';
+                const s = Math.random() * 10 + 5;
+                ctx.fillRect(Math.random()*128, Math.random()*128, s, s);
+            }
+
+            const tex = new paral.CanvasTexture(canvas);
+            tex.magFilter = paral.NearestFilter;
+            return tex;
+        }
+
+        let groundTex, barkTex, leafTex, fenceTex;
+
+        function handleKey(code, val) {
+            switch (code) {
+                case 'KeyW': moveForward = val; break;
+                case 'KeyA': moveLeft = val; break;
+                case 'KeyS': moveBackward = val; break;
+                case 'KeyD': moveRight = val; break;
+                case 'ShiftLeft': isSprinting = val; break;
+                case 'Space': if (val && player.position.y <= 0.1) velocity.y = 8; break;
+                case 'KeyF': 
+                    if (val) interact(); 
+                    break;
+            }
+        }
+
+        function onMouseMove(e) {
+            if (document.pointerLockElement === document.body) {
+                yaw -= e.movementX * 0.002;
+                pitch -= e.movementY * 0.002;
+                pitch = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, pitch));
+            }
+            lastMouseTime = Date.now();
+        }
+
+        function createTree(worldX, worldZ) {
+            const group = new paral.Group();
+            
+            const heightFactor = 0.8 + Math.random() * 0.7;
+            
+            // Trunk
+            const trunkGeo = new paral.CylinderGeometry(0.35, 0.55, 8 * heightFactor, 6);
+            const trunkMat = new paral.MeshStandardMaterial({ map: barkTex, color: 0x1a1510 });
+            const trunk = new paral.Mesh(trunkGeo, trunkMat);
+            trunk.castShadow = true;
+            trunk.receiveShadow = true;
+            trunk.position.y = 4 * heightFactor;
+            group.add(trunk);
+
+            // Foliage
+            const foliageMat = new paral.MeshStandardMaterial({ map: leafTex, color: 0x051a05 });
+            const segments = 5;
+            for(let i = 0; i < segments; i++) {
+                const leafGeo = new paral.ConeGeometry(2.5 - (i * 0.4), 6, 6);
+                const leaves = new paral.Mesh(leafGeo, foliageMat);
+                leaves.castShadow = true;
+                leaves.position.y = (6 + (i * 2.5)) * heightFactor;
+                group.add(leaves);
+            }
+
+            group.position.set(worldX, 0, worldZ);
+            scene.add(group);
+            
+            // Physical radius for collision
+            treeColliders.push({
+                x: worldX,
+                z: worldZ,
+                radius: 0.9 // Increased slightly to prevent phasing
+            });
+            
+            return group;
+        }
+
+        function createTile(tx, tz) {
+            const group = new paral.Group();
+            
+            // Ground
+            const geo = new paral.PlaneGeometry(tileSize, tileSize);
+            // Checkered pattern
+            const mat = new paral.MeshStandardMaterial({ 
+                map: groundTex,
+                color: (Math.abs(tx) + Math.abs(tz)) % 2 === 0 ? 0x151d15 : 0x121812,
+            });
+            const mesh = new paral.Mesh(geo, mat);
+            mesh.receiveShadow = true;
+            mesh.rotation.x = -Math.PI / 2;
+            group.add(mesh);
+
+            group.position.set(tx * tileSize, 0, tz * tileSize);
+            scene.add(group);
+
+            const wx = tx * tileSize;
+            const wz = tz * tileSize;
+
+            // --- Fence Generation ---
+            const minX = wx - tileSize / 2;
+            const maxX = wx + tileSize / 2;
+            const minZ = wz - tileSize / 2;
+            const maxZ = wz + tileSize / 2;
+
+            const atNorthFence = (minZ <= -MAP_LIMIT && maxZ >= -MAP_LIMIT);
+            const atSouthFence = (minZ <= MAP_LIMIT && maxZ >= MAP_LIMIT);
+            const atEastFence = (minX <= MAP_LIMIT && maxX >= MAP_LIMIT);
+            const atWestFence = (minX <= -MAP_LIMIT && maxX >= -MAP_LIMIT);
+
+            if (atNorthFence || atSouthFence || atEastFence || atWestFence) {
+                const postGeo = new paral.CylinderGeometry(0.15, 0.15, 3, 6);
+                const postMat = new paral.MeshStandardMaterial({ map: barkTex, color: 0x554433 });
+                const fencePanelGeo = new paral.PlaneGeometry(4, 3);
+                const fencePanelMat = new paral.MeshStandardMaterial({ map: fenceTex, transparent: true, side: paral.DoubleSide, alphaTest: 0.5 });
+                
+                // North/South Fence
+                if (atNorthFence || atSouthFence) {
+                    const zPos = atNorthFence ? -MAP_LIMIT : MAP_LIMIT;
+                    for (let x = Math.max(minX, -MAP_LIMIT); x <= Math.min(maxX, MAP_LIMIT); x += 4) {
+                        const post = new paral.Mesh(postGeo, postMat);
+                        post.position.set(x - wx, 1.5, zPos - wz);
+                        group.add(post);
+                        
+                        if (x < Math.min(maxX, MAP_LIMIT)) {
+                            const panel = new paral.Mesh(fencePanelGeo, fencePanelMat);
+                            panel.position.set(x - wx + 2, 1.5, zPos - wz);
+                            group.add(panel);
+                        }
+                    }
+                    const rail = new paral.Mesh(new paral.BoxGeometry(tileSize, 0.1, 0.1), postMat);
+                    rail.position.set(0, 2.5, zPos - wz);
+                    group.add(rail);
+                }
+                
+                // East/West Fence
+                if (atEastFence || atWestFence) {
+                    const xPos = atWestFence ? -MAP_LIMIT : MAP_LIMIT;
+                    for (let z = Math.max(minZ, -MAP_LIMIT); z <= Math.min(maxZ, MAP_LIMIT); z += 4) {
+                        const post = new paral.Mesh(postGeo, postMat);
+                        post.position.set(xPos - wx, 1.5, z - wz);
+                        group.add(post);
+
+                        if (z < Math.min(maxZ, MAP_LIMIT)) {
+                            const panel = new paral.Mesh(fencePanelGeo, fencePanelMat);
+                            panel.position.set(xPos - wx, 1.5, z - wz + 2);
+                            panel.rotation.y = Math.PI / 2;
+                            group.add(panel);
+                        }
+                    }
+                    const rail = new paral.Mesh(new paral.BoxGeometry(0.1, 0.1, tileSize), postMat);
+                    rail.position.set(xPos - wx, 2.5, 0);
+                    group.add(rail);
+                }
+            }
+
+            // Determine tree density
+            let treeCount = (Math.abs(wx) < MAP_LIMIT && Math.abs(wz) < MAP_LIMIT) ? 80 : 0;
+
+            const treeObjects = [];
+            const placedPositions = [];
+
+            for(let i = 0; i < treeCount; i++) {
+                let wx, wz;
+                let attempts = 0;
+                let valid = false;
+
+                while (attempts < 10 && !valid) {
+                    wx = (tx * tileSize) + (Math.random() - 0.5) * tileSize;
+                    wz = (tz * tileSize) + (Math.random() - 0.5) * tileSize;
+                    
+                    const distToCenter = Math.sqrt(wx*wx + wz*wz);
+                    if (distToCenter > 5) { 
+                        const overlap = placedPositions.some(p => {
+                            return ((wx - p.x) ** 2 + (wz - p.z) ** 2) < 9;
+                        });
+                        if (!overlap) valid = true;
+                    }
+                    attempts++;
+                }
+
+                if (valid) {
+                    placedPositions.push({x: wx, z: wz});
+                    treeObjects.push(createTree(wx, wz));
+                }
+            }
+
+            return { group, trees: treeObjects };
+        }
+
+        function updateWorld() {
+            // Look ahead based on velocity to load chunks early and reduce stutter
+            // Factor 2.0 at run speed (14) gives ~28 units lookahead (approx half chunk)
+            const pX = Math.round((player.position.x + velocity.x * 2.0) / tileSize);
+            const pZ = Math.round((player.position.z + velocity.z * 2.0) / tileSize);
+            const range = 2; 
+
+            for (let x = pX - range; x <= pX + range; x++) {
+                for (let z = pZ - range; z <= pZ + range; z++) {
+                    const key = `${x},${z}`;
+                    if (!tiles.has(key)) {
+                        tiles.set(key, createTile(x, z));
+                    }
+                }
+            }
+
+            for (const [key, tileData] of tiles) {
+                const [tx, tz] = key.split(',').map(Number);
+                if (Math.abs(tx - pX) > range || Math.abs(tz - pZ) > range) {
+                    // Remove trees from scene and colliders list
+                    tileData.trees.forEach(tree => {
+                        scene.remove(tree);
+                        const idx = treeColliders.findIndex(c => c.x === tree.position.x && c.z === tree.position.z);
+                        if (idx !== -1) treeColliders.splice(idx, 1);
+                    });
+                    scene.remove(tileData.group);
+                    tiles.delete(key);
+                }
+            }
+        }
+
+        function resolveCollisions(nextX, nextZ) {
+            const playerRadius = 0.55;
+            let currentX = nextX;
+            let currentZ = nextZ;
+
+            // Map Boundaries
+            if (currentX > MAP_LIMIT - 1) currentX = MAP_LIMIT - 1;
+            if (currentX < -MAP_LIMIT + 1) currentX = -MAP_LIMIT + 1;
+            if (currentZ > MAP_LIMIT - 1) currentZ = MAP_LIMIT - 1;
+            if (currentZ < -MAP_LIMIT + 1) currentZ = -MAP_LIMIT + 1;
+
+            // Simple distance check and push out
+            for (const tree of treeColliders) {
+                const dx = currentX - tree.x;
+                const dz = currentZ - tree.z;
+                const distance = Math.sqrt(dx * dx + dz * dz);
+                const minDist = playerRadius + tree.radius;
+                
+                if (distance < minDist) {
+                    const angle = Math.atan2(dz, dx);
+                    currentX = tree.x + Math.cos(angle) * minDist;
+                    currentZ = tree.z + Math.sin(angle) * minDist;
+                }
+            }
+
+            // Cabin Collisions
+            for (const col of cabinColliders) {
+                if (col.isDoor && col.doorObj.userData.isOpen) continue;
+
+                const minX = col.minX - playerRadius;
+                const maxX = col.maxX + playerRadius;
+                const minZ = col.minZ - playerRadius;
+                const maxZ = col.maxZ + playerRadius;
+
+                if (currentX > minX && currentX < maxX && currentZ > minZ && currentZ < maxZ) {
+                    const dLeft = currentX - minX;
+                    const dRight = maxX - currentX;
+                    const dTop = currentZ - minZ;
+                    const dBottom = maxZ - currentZ;
+                    const minOverlap = Math.min(dLeft, dRight, dTop, dBottom);
+
+                    if (minOverlap === dLeft) currentX = minX;
+                    else if (minOverlap === dRight) currentX = maxX;
+                    else if (minOverlap === dTop) currentZ = minZ;
+                    else if (minOverlap === dBottom) currentZ = maxZ;
+                }
+            }
+
+            return { x: currentX, z: currentZ };
+        }
+
+        function createEyePair() {
+            const g = new paral.Group();
+            
+            // Black Figure Body with Sub-Surface Trauma (Wound Engine)
+            // Using the shared woundTexture for the main body to simulate persistent trauma across encounters
+            const bodyMat = new paral.MeshStandardMaterial({ map: woundTexture, color: 0xffffff, roughness: 0.9, metalness: 0.1 });
+            
+            const bodyGeo = new paral.CylinderGeometry(0.2, 0.25, 1.6, 8);
+            const body = new paral.Mesh(bodyGeo, bodyMat);
+            body.position.y = -0.8;
+            g.add(body);
+
+            const headGeo = new paral.SphereGeometry(0.25, 8, 8);
+            const head = new paral.Mesh(headGeo, bodyMat);
+            g.add(head);
+
+            const eyeGeo = new paral.PlaneGeometry(0.05, 0.05);
+            const eyeMat = new paral.MeshBasicMaterial({ color: 0xff0000 });
+            const left = new paral.Mesh(eyeGeo, eyeMat);
+            left.position.set(-0.1, 0, 0.23);
+            const right = new paral.Mesh(eyeGeo, eyeMat);
+            right.position.set(0.1, 0, 0.23);
+            g.add(left); g.add(right);
+            g.userData = { isCharging: false, isSilent: false, stalkTime: 0, hp: 5 };
+            return g;
+        }
+
+        function respawnStalker(s) {
+            if (!s) return;
+            if (stalkerWalkSound && !stalkerWalkSound.paused) stalkerWalkSound.pause();
+            if (stalkerBgSound && !stalkerBgSound.paused) stalkerBgSound.pause();
+            s.userData.isCharging = false;
+            s.userData.isSilent = Math.random() < 0.4;
+            s.userData.stalkTime = 0;
+            s.userData.hp = 5;
+            const angle = Math.random() * Math.PI * 2;
+            const r = 40 + Math.random() * 20;
+            s.position.set(
+                player.position.x + Math.cos(angle) * r,
+                1.5, 
+                player.position.z + Math.sin(angle) * r
+            );
+        }
+
+        function triggerDamage() {
+            const overlay = document.getElementById('damage-overlay');
+            overlay.style.opacity = 1;
+            overlay.style.transition = 'none';
+            setTimeout(() => {
+                overlay.style.transition = 'opacity 1.5s ease-out';
+                overlay.style.opacity = 0;
+            }, 100);
+        }
+
+        function updateStalkers(delta) {
+            let closestAudibleDist = Infinity;
+            let activeAudioStalker = null;
+            let anyCharging = false;
+
+            stalkers.forEach(s => {
+                s.visible = true;
+                s.lookAt(player.position);
+                
+                // Check if player is inside a cabin (Safe Zone)
+                let playerInCabin = false;
+                for (const c of cabins) {
+                    if (player.position.distanceTo(c.position) < 9) {
+                        playerInCabin = true;
+                        break;
+                    }
+                }
+
+                // Fence Collision (Map Limits)
+                if (s.position.x < -MAP_LIMIT + 2) s.position.x = -MAP_LIMIT + 2;
+                if (s.position.x > MAP_LIMIT - 2) s.position.x = MAP_LIMIT - 2;
+                if (s.position.z < -MAP_LIMIT + 2) s.position.z = -MAP_LIMIT + 2;
+                if (s.position.z > MAP_LIMIT - 2) s.position.z = MAP_LIMIT - 2;
+
+                // Cabin Safe Zones
+                for (const c of cabins) {
+                    if (s.position.distanceTo(c.position) < 12) {
+                        const push = new paral.Vector3().subVectors(s.position, c.position).normalize();
+                        s.position.add(push.multiplyScalar(0.5));
+                    }
+                }
+
+                const dist = s.position.distanceTo(player.position);
+                
+                // If player outruns it, it finds them again (always knows)
+                if (dist > 100) {
+                    respawnStalker(s);
+                    return;
+                }
+
+                // Check if player sees it
+                const toStalker = new paral.Vector3().subVectors(s.position, player.position).normalize();
+                const camDir = new paral.Vector3();
+                camera.getWorldDirection(camDir);
+                const dot = camDir.dot(toStalker);
+                const isVisible = (dot > 0.7) && !playerInCabin;
+
+                // Stalking Logic: Accumulate knowledge if close and observing
+                if (dist < 80 && !s.userData.isCharging) {
+                    s.userData.stalkTime += delta;
+                }
+
+                // Decision Logic: Hide or Charge
+                if (!s.userData.isCharging) {
+                    // Cannot attack or find player in cabin
+                    if (playerInCabin) {
+                        if (dist < 20) respawnStalker(s); // Leave if too close
+                        return;
+                    }
+
+                    if (isVisible && dist < 50) {
+                        // If silent, always hide when seen
+                        if (s.userData.isSilent) {
+                            respawnStalker(s);
+                            return;
+                        }
+
+                        // Attack Condition: Must have stalked enough
+                        // Learning: As level increases, required time decreases
+                        const requiredStalkTime = Math.max(1.0, 5.0 - (aiLearningLevel * 0.5));
+
+                        if (s.userData.stalkTime > requiredStalkTime) {
+                            // 30% chance to charge + learning bonus
+                            const chargeChance = 0.3 + (aiLearningLevel * 0.05);
+                            if (Math.random() < chargeChance) {
+                                s.userData.isCharging = true;
+                            } else {
+                                respawnStalker(s);
+                                return;
+                            }
+                        } else {
+                            // Not stalked enough, just hide
+                            respawnStalker(s);
+                            return;
+                        }
+                    }
+                }
+
+                // Movement Speed
+                // AI gets faster as it learns
+                let speed = 5.5 + (aiLearningLevel * 0.5);
+                if (s.userData.isCharging) speed = 16.0 + (aiLearningLevel * 1.0);
+
+                // Move towards player
+                if (dist > 2) {
+                    const dir = new paral.Vector3().subVectors(player.position, s.position).normalize();
+                    dir.y = 0;
+                    s.position.add(dir.multiplyScalar(delta * speed));
+                }
+
+                // Track closest audible stalker for sound
+                if (!s.userData.isSilent) {
+                    if (dist < closestAudibleDist) {
+                        closestAudibleDist = dist;
+                        activeAudioStalker = s;
+                    }
+                    if (s.userData.isCharging) anyCharging = true;
+                }
+
+                // Attack logic
+                if (dist < 3.5) {
+                    if (!s.userData.isSilent) {
+                        // Dodge Mechanic
+                        let dodged = false;
+                        if (velocity.length() > 2.0) {
+                            // Check if moving sideways relative to stalker
+                            const vDir = velocity.clone().normalize();
+                            const sDir = new paral.Vector3().subVectors(s.position, player.position).normalize();
+                            const d = vDir.dot(sDir);
+                            // If dot product is small, movement is perpendicular
+                            if (Math.abs(d) < 0.6) {
+                                dodged = true;
+                            }
+                        }
+
+                        if (dodged) {
+                            // Successful dodge - AI learns significantly
+                            aiLearningLevel += 1.0;
+                        } else {
+                            // Hit
+                            const attackChance = s.userData.isCharging ? 1.0 : (0.2 + (sprintAggression * 0.3));
+                            if (Math.random() < attackChance) {
+                                triggerDamage();
+                                health = Math.max(0, health - 20);
+                                document.getElementById('health-fill').style.width = health + '%';
+                                aiLearningLevel += 0.2; // AI learns a bit from success too
+                            }
+                        }
+                    }
+                    respawnStalker(s);
+                }
+            });
+
+            // --- Shared Audio Logic ---
+            if (activeAudioStalker) {
+                // Walking Sound
+                if (audioEnabled && stalkerWalkSound) {
+                    if (stalkerWalkSound.paused) stalkerWalkSound.play().catch(() => {});
+                    let vol = Math.max(0, (1 - closestAudibleDist / 50) * 0.5);
+                    if (activeAudioStalker.userData.isCharging) vol = Math.min(1, vol * 2.0);
+                    stalkerWalkSound.volume = vol;
+                }
+
+                // Background Sound
+                if (closestAudibleDist < 100 || anyCharging) {
+                    if (audioEnabled && stalkerBgSound) {
+                        if (anyCharging) {
+                            if (stalkerBgSound.paused) {
+                                stalkerBgSound.currentTime = 0;
+                                stalkerBgSound.play().catch(() => {});
+                            }
+                            stalkerBgSound.volume = Math.min(1.0, Math.max(0.2, (1 - closestAudibleDist / 60) * 1.0));
+                        } else {
+                            if (!stalkerBgSound.paused) {
+                                stalkerBgSound.volume = Math.max(0, (1 - closestAudibleDist / 100) * 0.3);
+                            } else {
+                                const timeSince = clock.getElapsedTime() - lastStalkerBgTime;
+                                if (timeSince > 10.0 && Math.random() < 0.005) {
+                                    stalkerBgSound.currentTime = 0;
+                                    stalkerBgSound.play().catch(() => {});
+                                    stalkerBgSound.volume = Math.max(0, (1 - closestAudibleDist / 100) * 0.3);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (stalkerBgSound && !stalkerBgSound.paused) {
+                        stalkerBgSound.pause();
+                        lastStalkerBgTime = clock.getElapsedTime();
+                    }
+                }
+            } else {
+                // No audible stalkers nearby
+                if (stalkerWalkSound && !stalkerWalkSound.paused) stalkerWalkSound.pause();
+                if (stalkerBgSound && !stalkerBgSound.paused) {
+                    stalkerBgSound.pause();
+                    lastStalkerBgTime = clock.getElapsedTime();
+                }
+            }
+        }
+
+        // --- 1. Procedural Wounding Engine (Canvas-based for WebGL compatibility) ---
+        function initWoundEngine() {
+            woundCanvas = document.createElement('canvas');
+            woundCanvas.width = 512;
+            woundCanvas.height = 512;
+            woundCtx = woundCanvas.getContext('2d');
+            
+            // Load persistent wounds from 40-hour session
+            const savedWounds = localStorage.getItem('foresight_wounds_v1');
+            if (savedWounds) {
+                const img = new Image();
+                img.onload = () => {
+                    woundCtx.drawImage(img, 0, 0);
+                    if (woundTexture) woundTexture.needsUpdate = true;
+                };
+                img.src = savedWounds;
+            } else {
+                woundCtx.fillStyle = '#050505'; // Clinical black skin
+                woundCtx.fillRect(0, 0, 512, 512);
+            }
+
+            woundTexture = new paral.CanvasTexture(woundCanvas);
+        }
+
+        function inflictTrauma(uv) {
+            if (!uv) return;
+            const x = uv.x * 512;
+            const y = uv.y * 512;
+            
+            // Procedural tearing and bruising
+            const radius = 20 + Math.random() * 30;
+            const grd = woundCtx.createRadialGradient(x, y, 2, x, y, radius);
+            grd.addColorStop(0, 'rgba(180, 0, 0, 0.9)'); // Fresh arterial red
+            grd.addColorStop(0.4, 'rgba(80, 0, 20, 0.6)'); // Deep bruising
+            grd.addColorStop(1, 'rgba(20, 0, 10, 0)'); // Fade to skin
+
+            woundCtx.globalCompositeOperation = 'source-over';
+            woundCtx.fillStyle = grd;
+            woundCtx.beginPath();
+            woundCtx.arc(x, y, radius, 0, Math.PI * 2);
+            woundCtx.fill();
+
+            // Leaking/Drip effect (Gravity simulation)
+            woundCtx.strokeStyle = 'rgba(100, 0, 0, 0.4)';
+            woundCtx.lineWidth = 2;
+            woundCtx.beginPath();
+            woundCtx.moveTo(x, y);
+            woundCtx.lineTo(x + (Math.random() - 0.5) * 10, y + 50 + Math.random() * 50);
+            woundCtx.stroke();
+
+            woundTexture.needsUpdate = true;
+            localStorage.setItem('foresight_wounds_v1', woundCanvas.toDataURL());
+        }
+
+        function createCabin(x, z, hasGun) {
+            const g = new paral.Group();
+            g.position.set(x, 0, z);
+            
+            // Floor
+            const floor = new paral.Mesh(new paral.BoxGeometry(10, 0.2, 10), new paral.MeshStandardMaterial({color: 0x332211}));
+            g.add(floor);
+            
+            // Roof
+            const roofGeo = new paral.ConeGeometry(9, 4, 4);
+            const roofMat = new paral.MeshStandardMaterial({color: 0x221100});
+            const roof = new paral.Mesh(roofGeo, roofMat);
+            roof.position.set(0, 7, 0);
+            roof.rotation.y = Math.PI / 4;
+            g.add(roof);
+
+            // Walls
+            const wallMat = new paral.MeshStandardMaterial({color: 0x443322});
+            
+            // Back Wall
+            const w1 = new paral.Mesh(new paral.BoxGeometry(10, 5, 0.5), wallMat); 
+            w1.position.set(0, 2.5, -5); g.add(w1);
+            cabinColliders.push({minX: x-5, maxX: x+5, minZ: z-5.25, maxZ: z-4.75});
+
+            // Front Wall
+            const w2 = new paral.Mesh(new paral.BoxGeometry(10, 5, 0.5), wallMat); 
+            w2.position.set(0, 2.5, 5); g.add(w2);
+            cabinColliders.push({minX: x-5, maxX: x+5, minZ: z+4.75, maxZ: z+5.25});
+
+            // Left Wall
+            const w3 = new paral.Mesh(new paral.BoxGeometry(0.5, 5, 10), wallMat); 
+            w3.position.set(-5, 2.5, 0); g.add(w3);
+            cabinColliders.push({minX: x-5.25, maxX: x-4.75, minZ: z-5, maxZ: z+5});
+
+            // Right Wall (Door Side)
+            const w4a = new paral.Mesh(new paral.BoxGeometry(0.5, 5, 3.5), wallMat); 
+            w4a.position.set(5, 2.5, -3.25); g.add(w4a);
+            cabinColliders.push({minX: x+4.75, maxX: x+5.25, minZ: z-5, maxZ: z-1.5});
+
+            const w4b = new paral.Mesh(new paral.BoxGeometry(0.5, 5, 3.5), wallMat); 
+            w4b.position.set(5, 2.5, 3.25); g.add(w4b);
+            cabinColliders.push({minX: x+4.75, maxX: x+5.25, minZ: z+1.5, maxZ: z+5});
+
+            const w4c = new paral.Mesh(new paral.BoxGeometry(0.5, 1.5, 3), wallMat); 
+            w4c.position.set(5, 4.25, 0); g.add(w4c);
+
+            // Door
+            const doorGroup = new paral.Group();
+            doorGroup.position.set(5, 2.5, -1.5); // Hinge position
+            const doorGeo = new paral.BoxGeometry(0.2, 4.8, 3);
+            const doorMat = new paral.MeshStandardMaterial({color: 0x3a2a1a});
+            const door = new paral.Mesh(doorGeo, doorMat);
+            door.position.set(0, 0, 1.5); // Pivot offset
+            doorGroup.add(door);
+            doorGroup.userData = { isDoor: true, isOpen: false, locked: hasGun }; // Locked if weapon cabin
+            g.add(doorGroup);
+            
+            // Door Collider
+            cabinColliders.push({
+                minX: x+4.75, maxX: x+5.25, 
+                minZ: z-1.5, maxZ: z+1.5,
+                isDoor: true,
+                doorObj: doorGroup
+            });
+
+            // Bed
+            const bed = new paral.Mesh(new paral.BoxGeometry(3, 1, 5), new paral.MeshStandardMaterial({color: 0x880000}));
+            bed.position.set(-3, 0.5, -2);
+            g.add(bed);
+
+            // Fireplace
+            const fire = new paral.PointLight(0xffaa00, 2.5, 40);
+            fire.position.set(-4, 1, 4);
+            g.add(fire);
+
+            // Chimney
+            const chimney = new paral.Mesh(new paral.BoxGeometry(1, 8, 1), new paral.MeshStandardMaterial({color: 0x221100}));
+            chimney.position.set(-4, 4, 4);
+            g.add(chimney);
+            
+            // Visual Fire Mesh
+            const fireMesh = new paral.Mesh(new paral.SphereGeometry(0.4, 8, 8), new paral.MeshBasicMaterial({color: 0xffaa00}));
+            fireMesh.position.set(-4, 0.5, 4);
+            g.add(fireMesh);
+
+            // Chair & Pistol
+            const chair = new paral.Mesh(new paral.BoxGeometry(1, 1, 1), new paral.MeshStandardMaterial({color: 0x553311}));
+            chair.position.set(3, 0.5, 3);
+            g.add(chair);
+
+            if (hasGun) {
+                const pistol = new paral.Mesh(new paral.BoxGeometry(0.5, 0.2, 0.2), new paral.MeshStandardMaterial({color: 0x111111}));
+                pistol.position.set(3, 1.2, 3);
+                pistol.name = 'pistol';
+                g.add(pistol);
+            }
+            
+            // Note (Starting Cabin)
+            if (!hasGun) {
+                const note = new paral.Mesh(new paral.PlaneGeometry(0.4, 0.5), new paral.MeshBasicMaterial({color: 0xffffff}));
+                note.rotation.x = -Math.PI/2;
+                note.position.set(3, 1.01, 3);
+                note.userData = { isNote: true };
+                g.add(note);
+            }
+
+            g.userData = { hasPistol: hasGun };
+            scene.add(g);
+            cabins.push(g);
+            cabinChimneyPositions.push(new paral.Vector3(x - 4, 8, z + 4));
+        }
+
+        function interact() {
+            if (isReading) {
+                isReading = false;
+                document.getElementById('note-overlay').style.display = 'none';
+                if (paperSound) {
+                    paperSound.currentTime = 0;
+                    paperSound.play().catch(()=>{});
+                }
+                return;
+            }
+            if (sleepState !== 0) return;
+
+            // Raycast for interaction
+            const raycaster = new paral.Raycaster();
+            const camDir = new paral.Vector3();
+            camera.getWorldDirection(camDir);
+            raycaster.set(camera.position, camDir);
+            raycaster.far = 4.0;
+
+            const hits = raycaster.intersectObjects(scene.children, true);
+            if (hits.length > 0) {
+                let obj = hits[0].object;
+                // Traverse up to find interactable parent
+                while (obj) {
+                    if (obj.userData) {
+                        if (obj.userData.isDoor) {
+                            if (obj.userData.locked && !hasKey) {
+                                return;
+                            }
+                            obj.userData.isOpen = !obj.userData.isOpen;
+                            return;
+                        }
+                        if (obj.userData.isNote) {
+                            isReading = true;
+                            document.getElementById('note-overlay').style.display = 'flex';
+                            if (paperSound) {
+                                paperSound.currentTime = 0;
+                                paperSound.play().catch(()=>{});
+                            }
+                            return;
+                        }
+                        if (obj.userData.isKey) {
+                            hasKey = true;
+                            obj.visible = false;
+                            obj.parent.remove(obj);
+                            return;
+                        }
+                    }
+                    if (obj.parent && obj.parent.type !== 'Scene') {
+                        obj = obj.parent;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            
+            for (const c of cabins) {
+                const dist = player.position.distanceTo(c.position);
+                if (dist < 8) {
+                    // Pistol Pickup
+                    if (c.userData.hasPistol) {
+                        const pWorldPos = c.position.clone().add(new paral.Vector3(3, 1.2, 3));
+                        if (player.position.distanceTo(pWorldPos) < 3) {
+                            hasPistol = true;
+                            ammo = 6;
+                            c.userData.hasPistol = false;
+                            const pMesh = c.getObjectByName('pistol');
+                            if (pMesh) pMesh.visible = false;
+                            document.getElementById('ammo-display').style.display = 'block';
+                            document.getElementById('ammo-count').innerText = ammo;
+                        }
+                    }
+                    
+                    // Sleep
+                    const bedWorldPos = c.position.clone().add(new paral.Vector3(-3, 1, -2));
+                    if (player.position.distanceTo(bedWorldPos) < 4) {
+                        sleepState = 1;
+                        wakeTargetPos.copy(player.position);
+                        bedTargetPos.copy(bedWorldPos);
+                        bedTargetPos.y += 0.5; // Lie down height
+                    }
+                }
+            }
+        }
+
+        function attack() {
+            if (sleepState !== 0) return;
+            if (hasPistol && ammo > 0) {
+                shootPistol();
+            } else {
+                punch();
+            }
+        }
+
+        function shootPistol() {
+            if (clock.getElapsedTime() - lastShotTime < 0.5) return;
+            lastShotTime = clock.getElapsedTime();
+            
+            ammo--;
+            document.getElementById('ammo-count').innerText = ammo;
+            
+            // Simple gunshot sound logic
+            const osc = audioListener.context.createOscillator();
+            const gain = audioListener.context.createGain();
+            osc.connect(gain);
+            gain.connect(audioListener.context.destination);
+            osc.frequency.setValueAtTime(800, audioListener.context.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioListener.context.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.5, audioListener.context.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioListener.context.currentTime + 0.1);
+            osc.start();
+            osc.stop(audioListener.context.currentTime + 0.1);
+
+            // Raycast
+            const raycaster = new paral.Raycaster();
+            const camDir = new paral.Vector3();
+            camera.getWorldDirection(camDir);
+            raycaster.set(camera.position, camDir);
+            checkHit(raycaster, 3, true); // 3 damage (2 shots to kill 5HP)
+        }
+
+        function punch() {
+            if (isPunching) return;
+            isPunching = true;
+            punchTimer = 0;
+
+            // Raycast short range
+            const raycaster = new paral.Raycaster();
+            const camDir = new paral.Vector3();
+            camera.getWorldDirection(camDir);
+            raycaster.set(camera.position, camDir);
+            raycaster.far = 3.0; 
+            checkHit(raycaster, 1, true); 
+        }
+
+        function checkHit(raycaster, damage, applyWound = false) {
+            const hits = raycaster.intersectObjects(stalkers, true);
+            if (hits.length > 0) {
+                if (raycaster.far && hits[0].distance > raycaster.far) return;
+
+                // Find root group
+                let obj = hits[0].object;
+                while(obj.parent && obj.parent.type !== 'Scene') {
+                    obj = obj.parent;
+                }
+
+                if (applyWound && hits[0].uv) {
+                    inflictTrauma(hits[0].uv);
+                }
+                
+                if (obj.userData && obj.userData.hp !== undefined) {
+                    obj.userData.hp -= damage;
+                    if (obj.userData.hp <= 0) {
+                        if (figureDeathSound) {
+                            figureDeathSound.currentTime = 0;
+                            figureDeathSound.play().catch(()=>{});
+                        }
+                        respawnStalker(obj);
+                    }
+                }
+            }
+        }
+
+        // --- 2. Spatial Gaslighting & 4. Persistence of Presence ---
+        function updateClinicalHorror(delta) {
+            realWorldTime = new Date();
+            const hour = realWorldTime.getHours();
+            
+            // Lighting: Uncanny Valley (Cold Blue at night)
+            if (scene && scene.children) {
+                const ambient = scene.children.find(c => c.isAmbientLight);
+                const moon = scene.children.find(c => c.isDirectionalLight);
+                
+                if (ambient && moon) {
+                    if (hour >= 18 || hour < 6) {
+                        // Night: Cold, clinical blue
+                        ambient.color.setHSL(0.6, 0.4, 0.05); 
+                        moon.color.setHSL(0.6, 0.6, 0.2); 
+                        moon.intensity = 0.2;
+                    } else {
+                        // Day: Harsh, overexposed white
+                        ambient.color.setHSL(0.0, 0.0, 0.2);
+                        moon.color.setHSL(0.1, 0.1, 0.5);
+                        moon.intensity = 0.5;
+                    }
+                }
+            }
+
+            // Audio: Spatial Gaslighting (1AM - 4AM)
+            if (hour >= 1 && hour < 4) {
+                if (audioListener && audioListener.context && audioListener.context.state === 'running') {
+                    // 19Hz Infrasound (The Fear Frequency)
+                    if (!infrasoundOsc) {
+                        infrasoundOsc = audioListener.context.createOscillator();
+                        const gain = audioListener.context.createGain();
+                        infrasoundOsc.frequency.value = 19.0; 
+                        infrasoundOsc.type = 'sine';
+                        gain.gain.value = 0.15; 
+                        infrasoundOsc.connect(gain);
+                        gain.connect(audioListener.context.destination);
+                        infrasoundOsc.start();
+                    }
+                    // Apply 5ms delay to breathing
+                    if (breathingSound.spatialDelayNode) {
+                        breathingSound.spatialDelayNode.delayTime.setTargetAtTime(0.005, audioListener.context.currentTime, 0.1);
+                    }
+                }
+            } else {
+                if (infrasoundOsc) { infrasoundOsc.stop(); infrasoundOsc = null; }
+                if (breathingSound.spatialDelayNode) {
+                    breathingSound.spatialDelayNode.delayTime.setTargetAtTime(0, audioListener.context.currentTime, 0.1);
+                }
+            }
+
+            // UI Disassociation
+            const timeSinceMouse = Date.now() - lastMouseTime;
+            const uiContainer = document.getElementById('ui-container');
+            const healthLabel = uiContainer.children[0]; 
+            
+            if (timeSinceMouse > 5000 && Math.random() < 0.1) { 
+                uiContainer.style.transform = `translate(${Math.random()*2-1}px, ${Math.random()*2-1}px)`;
+                if (Math.random() < 0.05) healthLabel.innerText = "DYING";
+            } else {
+                uiContainer.style.transform = 'none';
+                healthLabel.innerText = "HEALTH";
+            }
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            const menu = document.getElementById('pause-menu');
+            
+            if (isPaused) {
+                menu.style.display = 'flex';
+                document.exitPointerLock();
+                if (audioListener && audioListener.context && audioListener.context.state === 'running') {
+                    audioListener.context.suspend();
+                }
+            } else {
+                menu.style.display = 'none';
+                document.body.requestPointerLock();
+                if (audioListener && audioListener.context && audioListener.context.state === 'suspended') {
+                    audioListener.context.resume();
+                }
+                if (clock) clock.getDelta(); // Reset delta to prevent jumps
+            }
+        }
+
+        document.getElementById('btn-continue').addEventListener('click', togglePause);
+        document.getElementById('btn-exit').addEventListener('click', () => {});
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape') togglePause();
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            if (gamepads[0]) {
+                const gp = gamepads[0];
+                // Button 16 (Home/Guide) or Button 9 (Start/Menu)
+                if ((gp.buttons[16] && gp.buttons[16].pressed) || (gp.buttons[9] && gp.buttons[9].pressed)) {
+                    if (!pauseButtonState) {
+                        togglePause();
+                        pauseButtonState = true;
+                    }
+                } else {
+                    pauseButtonState = false;
+                }
+            }
+
+            if (isPaused) return;
+
+            const delta = Math.min(clock.getDelta(), 0.1);
+
+            // Smoke Particles
+            for (const pos of cabinChimneyPositions) {
+                if (Math.random() < 0.3) {
+                    const size = 2 + Math.random() * 2;
+                    const sGeo = new paral.BoxGeometry(size, size, size);
+                    const sMat = new paral.MeshBasicMaterial({color: 0x111111, transparent: true, opacity: 0.8, fog: false});
+                    const p = new paral.Mesh(sGeo, sMat);
+                    p.position.copy(pos);
+                    p.position.x += (Math.random() - 0.5);
+                    p.position.z += (Math.random() - 0.5);
+                    scene.add(p);
+                    smokeParticles.push(p);
+                }
+            }
+            for (let i = smokeParticles.length - 1; i >= 0; i--) {
+                const p = smokeParticles[i];
+                p.position.y += delta * 15; 
+                p.rotation.x += delta * 0.5;
+                p.rotation.z += delta * 0.5;
+                p.scale.multiplyScalar(1.0 + delta * 0.2);
+                p.material.opacity -= delta * 0.05; 
+                if (p.material.opacity <= 0 || p.position.y > 500) {
+                    scene.remove(p);
+                    smokeParticles.splice(i, 1);
+                }
+            }
+
+            // Punch Animation
+            if (isPunching) {
+                punchTimer += delta * 20;
+                fistMesh.position.z = -0.5 - Math.sin(punchTimer) * 0.4;
+                fistMesh.position.x = 0.4 - Math.sin(punchTimer) * 0.1;
+                if (punchTimer > Math.PI) {
+                    isPunching = false;
+                    fistMesh.position.z = -0.5;
+                    fistMesh.position.x = 0.4;
+                }
+            }
+
+            // Door Animation
+            cabins.forEach(c => {
+                c.children.forEach(child => {
+                    if (child.userData && child.userData.isDoor) {
+                        const targetRot = child.userData.isOpen ? -Math.PI / 2 : 0;
+                        child.rotation.y = paral.MathUtils.lerp(child.rotation.y, targetRot, delta * 5);
+                    }
+                });
+            });
+
+            // Interaction Prompt Raycast
+            const prompt = document.getElementById('interaction-prompt');
+            if (sleepState === 0 && !isReading) {
+                const raycaster = new paral.Raycaster();
+                const camDir = new paral.Vector3();
+                camera.getWorldDirection(camDir);
+                raycaster.set(camera.position, camDir);
+                raycaster.far = 4.0;
+                const hits = raycaster.intersectObjects(scene.children, true);
+                let showing = false;
+                if (hits.length > 0) {
+                    let obj = hits[0].object;
+                    while(obj) {
+                        if (obj.userData) {
+                            if (obj.userData.isDoor) { prompt.innerText = obj.userData.locked && !hasKey ? "Locked (Need Key)" : (obj.userData.isOpen ? "Press F to Close" : "Press F to Open"); showing = true; break; }
+                            if (obj.userData.isNote) { prompt.innerText = "Press F to Read"; showing = true; break; }
+                            if (obj.userData.isKey) { prompt.innerText = "Press F to Take Key"; showing = true; break; }
+                        }
+                        if (obj.name === 'pistol') { prompt.innerText = "Press F to Take Weapon"; showing = true; break; }
+                        if (obj.parent && obj.parent.type !== 'Scene') obj = obj.parent;
+                        else break;
+                    }
+                }
+                prompt.style.display = showing ? 'block' : 'none';
+            } else {
+                prompt.style.display = 'none';
+            }
+
+            // Watcher Logic
+            if (watcher) {
+                watcher.lookAt(player.position);
+            }
+
+            // Sleep Animation Logic
+            if (sleepState > 0) {
+                const overlay = document.getElementById('overlay');
+                if (sleepState === 1) { // Getting in bed
+                    player.position.lerp(bedTargetPos, delta * 2);
+                    camera.position.copy(player.position);
+                    overlay.style.backgroundColor = `rgba(0,0,0,${Math.min(1, (1 - player.position.distanceTo(bedTargetPos)) * 2)})`;
+                    if (player.position.distanceTo(bedTargetPos) < 0.2) {
+                        sleepState = 2;
+                        sleepTimer = 0;
+                        overlay.style.backgroundColor = 'black';
+                        overlay.style.opacity = 1;
+                    }
+                } else if (sleepState === 2) { // Sleeping
+                    sleepTimer += delta;
+                    if (sleepTimer > 2.0) {
+                        health = 100;
+                        document.getElementById('health-fill').style.width = '100%';
+                        sleepState = 3;
+                    }
+                } else if (sleepState === 3) { // Getting out
+                    player.position.lerp(wakeTargetPos, delta * 2);
+                    camera.position.copy(player.position);
+                    const dist = player.position.distanceTo(wakeTargetPos);
+                    overlay.style.opacity = dist; // Fade out overlay
+                    if (dist < 0.2) {
+                        sleepState = 0;
+                        overlay.style.opacity = 0;
+                        overlay.style.backgroundColor = ''; // Reset to gradient
+                    }
+                }
+                renderer.render(scene, camera);
+                return; // Skip other logic while sleeping
+            }
+
+            // Fireplace Audio Logic
+            let closestCabinDist = Infinity;
+            for (const c of cabins) {
+                const d = player.position.distanceTo(c.position);
+                if (d < closestCabinDist) closestCabinDist = d;
+            }
+            if (fireSound) {
+                if (closestCabinDist < 30) {
+                    if (fireSound.paused) fireSound.play().catch(()=>{});
+                    fireSound.volume = Math.max(0, 1 - (closestCabinDist / 30));
+                } else {
+                    if (!fireSound.paused) fireSound.pause();
+                }
+            }
+
+            velocity.y -= GRAVITY * delta;
+
+            // --- Input Handling (Keyboard + Gamepad) ---
+            let inputX = Number(moveLeft) - Number(moveRight);
+            let inputZ = Number(moveForward) - Number(moveBackward);
+            let gamepadSprint = false;
+
+            if (gamepads[0]) {
+                const gp = gamepads[0];
+                const deadzone = 0.15;
+
+                // Left Stick: Move
+                if (Math.abs(gp.axes[0]) > deadzone) inputX -= gp.axes[0];
+                if (Math.abs(gp.axes[1]) > deadzone) inputZ -= gp.axes[1];
+
+                // Right Stick: Look
+                const lookSensitivity = 2.0;
+                if (Math.abs(gp.axes[2]) > deadzone) yaw -= gp.axes[2] * lookSensitivity * delta;
+                if (Math.abs(gp.axes[3]) > deadzone) pitch -= gp.axes[3] * lookSensitivity * delta;
+                pitch = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, pitch));
+
+                // Button 0 (A/Cross): Jump
+                if (gp.buttons[0].pressed && player.position.y <= 0.1) {
+                    velocity.y = 8;
+                }
+                // Button 2 (X/Square): Interact
+                if (gp.buttons[2] && gp.buttons[2].pressed) {
+                    if (!controllerFPressed) {
+                        interact();
+                        controllerFPressed = true;
+                    }
+                } else {
+                    controllerFPressed = false;
+                }
+
+                // Button 11 (R3): Sprint
+                if (gp.buttons[11].pressed) {
+                    gamepadSprint = true;
+                }
+                
+                // Button 7 (R2/RT): Shoot
+                if (gp.buttons[7] && gp.buttons[7].pressed) {
+                    attack();
+                }
+            }
+
+            const isMoving = Math.abs(inputX) > 0.1 || Math.abs(inputZ) > 0.1;
+            const effectiveSprint = isSprinting || gamepadSprint;
+
+            // Stamina Logic
+            let currentSpeed = WALK_SPEED;
+            const isActuallySprinting = effectiveSprint && isMoving && !exhausted;
+            
+            if (isActuallySprinting) {
+                currentSpeed = RUN_SPEED;
+                stamina = Math.max(0, stamina - delta * 30);
+                if (stamina <= 0) exhausted = true;
+                sprintAggression = Math.min(1.0, sprintAggression + delta * 0.15);
+            } else {
+                stamina = Math.min(100, stamina + delta * 15);
+                if (stamina >= 100) exhausted = false;
+                sprintAggression = Math.max(0, sprintAggression - delta * 0.05);
+            }
+            const sBar = document.getElementById('stamina-fill');
+            sBar.style.width = stamina + '%';
+            sBar.style.backgroundColor = exhausted ? '#ff5555' : '#fff';
+            
+            const targetV = new paral.Vector3(inputX, 0, inputZ);
+            
+            // Normalize and apply orientation
+            if (targetV.length() > 1) targetV.normalize();
+            targetV.multiplyScalar(currentSpeed);
+            
+            const moveVec = new paral.Vector3(targetV.x, 0, targetV.z);
+            moveVec.applyAxisAngle(new paral.Vector3(0, 1, 0), yaw);
+
+            velocity.x = paral.MathUtils.lerp(velocity.x, moveVec.x, 10 * delta);
+            velocity.z = paral.MathUtils.lerp(velocity.z, moveVec.z, 10 * delta);
+
+            let nextX = player.position.x - velocity.x * delta;
+            let nextZ = player.position.z - velocity.z * delta;
+            
+            // Collision resolution
+            const resolved = resolveCollisions(nextX, nextZ);
+            player.position.x = resolved.x;
+            player.position.z = resolved.z;
+            
+            player.position.y += velocity.y * delta;
+
+            let groundHeight = 0;
+            if (Math.abs(player.position.x) < 1.5 && Math.abs(player.position.z) < 1.5) {
+                groundHeight = 0.5;
+            }
+
+            if (player.position.y < groundHeight) {
+                player.position.y = groundHeight;
+                velocity.y = 0;
+            }
+
+            updateWorld();
+
+            // Fog & Atmosphere Logic
+            const distToStation = Math.sqrt(player.position.x**2 + (player.position.z - (-1060))**2);
+            const targetFog = distToStation < 300 ? 0.005 : 0.015; // Reduced fog density for better visibility
+            scene.fog.density = paral.MathUtils.lerp(scene.fog.density, targetFog, delta * 0.5);
+
+            // --- Psychological Horror Mechanics ---
+            
+            // Sanity Drain
+            // Safe if near station or in cabin (sleeping)
+            const isSafe = (distToStation < 80) || (sleepState !== 0);
+            
+            if (isSafe) {
+                sanity = Math.min(100, sanity + delta * 5.0);
+            } else {
+                // Drain based on darkness/isolation
+                let drainRate = 0.3;
+                // Drain faster if flashlight is off (intensity low)
+                if (flashlight.intensity < 0.5) drainRate += 0.5;
+                sanity = Math.max(0, sanity - delta * drainRate);
+            }
+
+            // Hallucinations (Fake Eyes)
+            if (sanity < 50 && Math.random() < 0.01) {
+                // Spawn a hallucination
+                const angle = Math.random() * Math.PI * 2;
+                const r = 20 + Math.random() * 30;
+                const h = createEyePair();
+                h.position.set(
+                    player.position.x + Math.cos(angle) * r,
+                    1.5 + (Math.random() - 0.5), // Slight height variation
+                    player.position.z + Math.sin(angle) * r
+                );
+                scene.add(h);
+                hallucinations.push(h);
+            }
+
+            // Update Hallucinations
+            for (let i = hallucinations.length - 1; i >= 0; i--) {
+                const h = hallucinations[i];
+                h.lookAt(player.position);
+                const dist = h.position.distanceTo(player.position);
+                
+                // Check if player is looking at it
+                const toH = new paral.Vector3().subVectors(h.position, player.position).normalize();
+                const camDir = new paral.Vector3();
+                camera.getWorldDirection(camDir);
+                const dot = camDir.dot(toH);
+                
+                // Vanish if looked at directly or too close
+                if (dot > 0.9 || dist < 10) {
+                    scene.remove(h);
+                    hallucinations.splice(i, 1);
+                }
+            }
+
+            // Eyes
+            updateStalkers(delta);
+
+            // Head bobbing
+            if (isMoving) {
+                bobTimer += delta * 10;
+                lastBob = bobTimer;
+            } else {
+                bobTimer = 0;
+                lastBob = 0;
+            }
+
+            // Audio Management
+            const WALKING_MAX_VOLUME = 0.5;
+            let walkingTargetVolume = 0;
+
+            if (isMoving) {
+                walkingTargetVolume = WALKING_MAX_VOLUME;
+                if (walkingSound.paused) walkingSound.play().catch(() => {});
+                walkingSound.playbackRate = isActuallySprinting ? 1.8 : 1.0;
+            }
+
+            walkingSound.volume = paral.MathUtils.lerp(walkingSound.volume, walkingTargetVolume, 10 * delta);
+
+            if (walkingSound.volume < 0.01 && !walkingSound.paused && walkingTargetVolume === 0) {
+                walkingSound.pause();
+            }
+
+            const BREATHING_MAX_VOLUME = 0.4;
+            let breathingTargetVolume = 0;
+
+            if (isActuallySprinting || stamina < 100) {
+                breathingTargetVolume = BREATHING_MAX_VOLUME;
+                if (breathingSound.paused) {
+                    breathingSound.play().catch(() => {});
+                }
+            }
+
+            // Fade the volume towards the target
+            breathingSound.volume = paral.MathUtils.lerp(breathingSound.volume, breathingTargetVolume, 2.5 * delta);
+
+            // If faded out, pause it to save resources
+            if (breathingSound.volume < 0.01 && !breathingSound.paused) {
+                breathingSound.pause();
+                breathingSound.currentTime = 0;
+            }
+
+            // Flashlight flicker
+            let flickerChance = 0.08;
+            let flickerIntensity = 0.2;
+
+            // Check closest stalker for flicker effect
+            let closestFlickerDist = 999;
+            stalkers.forEach(s => {
+                closestFlickerDist = Math.min(closestFlickerDist, s.position.distanceTo(player.position));
+            });
+
+            if (closestFlickerDist < 25) {
+                flickerChance = 0.3; // Intense flicker
+                flickerIntensity = 0.5;
+            }
+
+            if (Math.random() < flickerChance) {
+                flashlight.intensity = Math.random() * flickerIntensity;
+            } else {
+                flashlight.intensity = 1.8 + (Math.random() * 0.2);
+            }
+
+            camera.position.set(player.position.x, player.position.y + 1.7 + Math.sin(bobTimer) * 0.05, player.position.z);
+            camera.rotation.set(pitch, yaw, 0, 'YXZ');
+            
+            // Update flashlight to point where camera is looking
+            flashlight.position.copy(camera.position);
+            const targetVec = new paral.Vector3();
+            camera.getWorldDirection(targetVec);
+            flashlight.target.position.copy(camera.position).add(targetVec);
+
+            // Update Compass
+            document.getElementById('compass-needle').style.transform = `rotate(${yaw}rad)`;
+
+            updateClinicalHorror(delta);
+
+            renderer.render(scene, camera);
+        }
+
+        function start() {
+            velocity = new paral.Vector3();
+            bedTargetPos = new paral.Vector3();
+            wakeTargetPos = new paral.Vector3();
+
+            initWoundEngine();
+
+            scene = new paral.Scene();
+            
+            groundTex = createNoiseTexture('#111111', '#222222');
+            barkTex = createNoiseTexture('#221100', '#110800');
+            leafTex = createNoiseTexture('#002200', '#001100');
+            fenceTex = createFenceTexture();
+
+            const skyColor = 0x05070a;
+            scene.background = new paral.Color(skyColor);
+            scene.fog = new paral.FogExp2(skyColor, 0.015); // Lighter fog initially
+
+            camera = new paral.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            audioListener = new paral.AudioListener();
+            camera.add(audioListener);
+
+            const moonLight = new paral.DirectionalLight(0xaaccff, 0.15);
+            moonLight.position.set(-50, 100, -100);
+            scene.add(moonLight);
+
+            const moonGeo = new paral.SphereGeometry(12, 32, 32);
+            const moonMat = new paral.MeshBasicMaterial({ color: 0xe0e0ff });
+            const moon = new paral.Mesh(moonGeo, moonMat);
+            moon.position.set(-150, 180, -350); 
+            scene.add(moon);
+
+            const ambient = new paral.AmbientLight(0x1a2a3a, 0.1);
+            scene.add(ambient);
+
+            flashlight = new paral.SpotLight(0xffffee, 1.8, 25, Math.PI / 8, 0.4, 2);
+            flashlight.castShadow = true;
+            flashlight.shadow.mapSize.width = 1024;
+            flashlight.shadow.mapSize.height = 1024;
+            flashlight.shadow.camera.near = 0.5;
+            flashlight.shadow.camera.far = 25;
+            flashlight.shadow.focus = 1;
+            scene.add(flashlight);
+            scene.add(flashlight.target);
+            
+            // Fist Mesh
+            const fistGeo = new paral.BoxGeometry(0.25, 0.25, 0.5);
+            const fistMat = new paral.MeshStandardMaterial({color: 0xffccaa});
+            fistMesh = new paral.Mesh(fistGeo, fistMat);
+            fistMesh.position.set(0.4, -0.3, -0.5);
+            camera.add(fistMesh);
+
+            player = new paral.Group();
+            scene.add(player);
+            player.position.set(0, 0, 0);
+
+            renderer = new paral.WebGLRenderer({ antialias: false });
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = paral.PCFSoftShadowMap;
+            renderer.setPixelRatio(window.devicePixelRatio * 0.5); 
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            clock = new paral.Clock();
+
+            walkingSound = new Audio('assets/audio/walking.mp3');
+            walkingSound.loop = true;
+            walkingSound.volume = 0;
+
+            breathingSound = new Audio('assets/audio/heavy-breathing.mp3');
+            breathingSound.loop = true;
+            breathingSound.volume = 0;
+            
+            // Upgrade to Spatial Gaslighting Audio (Web Audio API)
+            try {
+                if (audioListener.context) {
+                    const ctx = audioListener.context;
+                    const src = ctx.createMediaElementSource(breathingSound);
+                    const splitter = ctx.createChannelSplitter(2);
+                    const merger = ctx.createChannelMerger(2);
+                    const rightDelay = ctx.createDelay();
+                    
+                    src.connect(splitter);
+                    splitter.connect(merger, 0, 0); // Left direct
+                    splitter.connect(rightDelay, 1); // Right to delay
+                    rightDelay.connect(merger, 0, 1); // Delayed right to merger
+                    merger.connect(ctx.destination);
+                    
+                    breathingSound.spatialDelayNode = rightDelay;
+                }
+            } catch(e) { console.warn("Audio upgrade failed", e); }
+
+            // Init Stalker
+            stalkers = [];
+            // Main stalker
+            const s1 = createEyePair();
+            s1.position.set(0, 1.5, -40);
+            stalkers.push(s1);
+            scene.add(s1);
+            // Guard 1 (Halfway to station at -1060)
+            const s2 = createEyePair();
+            s2.position.set(-30, 1.5, -530);
+            stalkers.push(s2);
+            scene.add(s2);
+            // Guard 2
+            const s3 = createEyePair();
+            s3.position.set(30, 1.5, -530);
+            stalkers.push(s3);
+            scene.add(s3);
+
+            // Watcher in Forest (Behind Station)
+            watcher = createEyePair();
+            watcher.position.set(0, 3, -1150);
+            scene.add(watcher);
+
+            stalkerWalkSound = new Audio('assets/audio/walking.mp3');
+            stalkerWalkSound.loop = true;
+            stalkerWalkSound.volume = 0;
+
+            stalkerBgSound = new Audio('assets/audio/figure-bg.mp3');
+            stalkerBgSound.loop = false;
+            stalkerBgSound.volume = 0;
+            stalkerBgSound.addEventListener('ended', () => {
+                lastStalkerBgTime = clock.getElapsedTime();
+            });
+            
+            figureDeathSound = new Audio('assets/audio/figure-death.mp3');
+            
+            fireSound = new Audio('assets/audio/fire-cabin.mp3');
+            fireSound.loop = true;
+            fireSound.volume = 0;
+
+            paperSound = new Audio('assets/audio/cabin1-paper.mp3');
+
+            // Starting Cabin (No Weapon)
+            createCabin(0, 0, false);
+
+            // Northern Cabin (With Weapon) near fence
+            createCabin(600, -900, true);
+
+            document.addEventListener('keydown', e => handleKey(e.code, true));
+            document.addEventListener('keyup', e => handleKey(e.code, false));
+            document.addEventListener('mousemove', onMouseMove);
+            document.body.addEventListener('mousedown', () => {
+                document.body.requestPointerLock();
+                audioEnabled = true;
+                // Unlock audio on first interaction to satisfy browser autoplay policies
+                if (audioListener && audioListener.context.state === 'suspended') {
+                    audioListener.context.resume();
+                }
+                if (walkingSound && walkingSound.paused) {
+                    walkingSound.play().catch(() => {});
+                }
+                if (breathingSound && breathingSound.paused) {
+                    breathingSound.play().catch(() => {});
+                }
+                attack(); // Try to shoot or punch on click
+            });
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        function initSystem() {
+            const script = document.createElement('script');
+            script.src = "https://xpdevs.github.io/Paral/3d_engine.js";
+            script.onload = start;
+            document.head.appendChild(script);
+        }
+
+        window.onload = () => {
+            initSystem();
+        };
+    </script>
+</body>
+</html>
